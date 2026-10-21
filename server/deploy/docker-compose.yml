@@ -1,0 +1,43 @@
+# 方案 A：一台机器、两个容器（游戏 + 自动 HTTPS）
+#   cd server/deploy && docker compose up -d --build
+# 改两处：下面的 ALLOW_ORIGIN、Caddyfile 里的域名。
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8787"
+      HOST: 0.0.0.0
+      STATIC_DIR: /site
+      DATA_FILE: /data/board.json
+      # 同域部署可以写成自己的域名；前后端分离时才需要放行别的来源
+      ALLOW_ORIGIN: "*"
+      TRUST_PROXY: "1"
+      HSTS: "1"
+    volumes:
+      - board:/data
+    restart: unless-stopped
+    # 只在 compose 网络里暴露，公网走 caddy
+    expose:
+      - "8787"
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  board:
+  caddy_data:
+  caddy_config:

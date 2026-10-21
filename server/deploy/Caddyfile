@@ -1,0 +1,21 @@
+# 把 pelican.example.com 换成你的域名，Caddy 会自己去申请并续期证书。
+# 前提：域名 A/AAAA 记录已经指向这台机器，80 / 443 端口放行。
+
+pelican.example.com {
+	encode gzip zstd
+
+	# 成绩包约 40 KB，留够余量但不让人往上传大文件
+	request_body {
+		max_size 1MB
+	}
+
+	# Caddy 会自动加 X-Forwarded-For，服务端靠它取真实 IP 做限流
+	reverse_proxy app:8787
+
+	log {
+		output file /data/access.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+	}
+}

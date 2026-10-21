@@ -1,0 +1,14 @@
+{
+  "name": "thunder-pelican-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thunder Pelican leaderboard and run audit service (zero dependencies)",
+  "main": "app.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "node --test"
+  }
+}

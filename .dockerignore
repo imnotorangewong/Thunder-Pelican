@@ -1,0 +1,15 @@
+.git
+.github
+.gitignore
+node_modules
+_site
+*.zip
+.DS_Store
+server/data
+server/test
+server/tools
+server/testlib
+.preview
+preview
+# README 截图 14 MB，镜像里用不到（游戏素材全部内嵌 base64）
+assets

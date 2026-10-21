@@ -1,0 +1,41 @@
+# 方案 C：Fly.io（PaaS，推上去就有 HTTPS，不用管机器）
+#   fly launch --no-deploy --copy-config --name thunder-pelican
+#   fly volumes create tp_board --size 1 --region hkg
+#   fly deploy
+#
+# 只跑一台机器：榜单是进程内的 JSON 文件，两台机器会各写各的。
+
+app = "thunder-pelican"
+primary_region = "hkg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8787"
+  HOST = "0.0.0.0"
+  STATIC_DIR = "/site"
+  DATA_FILE = "/data/board.json"
+  TRUST_PROXY = "1"
+  HSTS = "1"
+
+[[mounts]]
+  source = "tp_board"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  # 没人玩的时候停掉省钱；第一次访问会冷启动一到两秒
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 120
+    soft_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

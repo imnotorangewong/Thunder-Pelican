@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# local QA / browser profiles
+.qa/
+.skill-qa/
+.final-qa/
+.verify/
+.chrome-qa/
+
+# build / transfer artifacts
+_site/
+*.zip
+
+# dependencies (project currently has none)
+node_modules/
+
+# leaderboard data written by server/app.js
+server/data/*.json
+server/data/*.json.tmp
+server/data/*.corrupt-*

@@ -1,0 +1,33 @@
+[Unit]
+Description=Thunder Pelican leaderboard service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=thunderpelican
+Group=thunderpelican
+WorkingDirectory=/srv/thunder-pelican/server
+EnvironmentFile=/etc/thunder-pelican.env
+ExecStart=/usr/bin/node /srv/thunder-pelican/server/app.js
+Restart=always
+RestartSec=2
+# 收到 SIGTERM 时先落盘再退出
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# 只让它写自己的数据目录
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/thunder-pelican/server/data
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
