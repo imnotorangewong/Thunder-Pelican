@@ -27,7 +27,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site/assets/skins
-          cp index.html _site/index.html
+          cp index.html dragon-star-preview.html _site/
           cp -R assets/skins/. _site/assets/skins/
           touch _site/.nojekyll
 

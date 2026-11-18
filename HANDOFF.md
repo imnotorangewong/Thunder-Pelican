@@ -220,8 +220,7 @@ for (const skin of SKINS) skinUnlocked.add(skin.id);
   （回调里第一行就是 `if (!wipeResultOpen) return`）。
 - **进页面强制穿 `ORIGINAL`**：`loadSkinProgress()` 之后有 `applySkin("original", {persist:false})`。
   想恢复"刷新保留上次皮肤"，删掉那一行。
-- **30 秒挑战的数组是每局新建的**：别挪到外面复用，结算后必须置 `null`，
-  否则上一局的峰值会带进下一局。按钮的 `done` 状态只挂 6 秒，靠 `state.time` 判。
+- **30 秒挑战按局维护峰值**。开局取当前速度，手动结束和超时共用 `endTrial()`。结算后展示 6 秒，由 `state.time` 计时。
 - **背景音乐是 `<audio>` + `loop`，闪电音效是 WebAudio**，两条路互不相干：音乐调 `musicEl.volume`
   （乘 0.72 的余量），音效调 `audio.setVolume()`（改主增益，不动 `AudioContext` 本身）。
   皮肤语音是独立 `Audio` 实例，`player.volume` 单独设。别把它们合并成一个主音量。

@@ -5353,6 +5353,7 @@
     const firstRider = Object.keys(riderStore.riders).length === 0;
     abortStormRun();
     /* whatever the guest scored before checking in still counts as a run */
+    endTrial();
     bankRide("checkin");
     const record = makeRiderRecord(name, firstRider);
     riderStore.riders[record.id] = record;
@@ -5380,6 +5381,7 @@
     const current = activeRider();
     if (current) syncRiderFromState(current);
     /* hand over the live expedition: bank it to the outgoing rider, then roll a new one */
+    endTrial();
     bankRide("switch");
     next.sessions = Math.max(1, (next.sessions || 1) + 1);
     riderStore.activeId = id;
@@ -6078,7 +6080,7 @@
     const horizon = cam.y - 300 * cam.s;
     const roadTop = cam.y - 150 * cam.s;
     const moon = {
-      x: cam.mobile ? W * .78 : W * .49,
+      x: cam.mobile ? W * .76 : W * .68,
       y: cam.mobile ? H * .19 : H * .195,
       r: clamp(Math.min(W, H) * .078, 34, 97)
     };
@@ -6087,17 +6089,17 @@
 
   function drawSky(t, horizon, moon) {
     const sky = ctx.createLinearGradient(0, -20, 0, horizon + 30);
-    sky.addColorStop(0, "#01060b");
-    sky.addColorStop(.32, "#04121a");
-    sky.addColorStop(.58, "#08222b");
-    sky.addColorStop(.82, "#0d3038");
-    sky.addColorStop(1, "#16424a");
+    sky.addColorStop(0, "#080c20");
+    sky.addColorStop(.32, "#161731");
+    sky.addColorStop(.58, "#33254e");
+    sky.addColorStop(.82, "#62365d");
+    sky.addColorStop(1, "#c76b80");
     ctx.fillStyle = sky;
     ctx.fillRect(-30, -30, W + 60, H + 60);
 
     const aurora = ctx.createRadialGradient(moon.x, moon.y, 0, moon.x, moon.y, Math.max(W, H) * .64);
-    aurora.addColorStop(0, "rgba(44,110,112,.18)");
-    aurora.addColorStop(.36, "rgba(19,65,73,.10)");
+    aurora.addColorStop(0, "rgba(87,105,183,.18)");
+    aurora.addColorStop(.36, "rgba(54,77,131,.10)");
     aurora.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = aurora;
     ctx.fillRect(0, 0, W, horizon + 50);
@@ -6127,8 +6129,8 @@
 
     /* moon halo */
     const halo = ctx.createRadialGradient(moon.x, moon.y, moon.r * .2, moon.x, moon.y, moon.r * 4.8);
-    halo.addColorStop(0, "rgba(239,236,198,.24)");
-    halo.addColorStop(.2, "rgba(216,229,193,.12)");
+    halo.addColorStop(0, "rgba(251,148,141,.24)");
+    halo.addColorStop(.2, "rgba(245,111,145,.12)");
     halo.addColorStop(.52, "rgba(139,184,170,.035)");
     halo.addColorStop(1, "rgba(139,184,170,0)");
     ctx.fillStyle = halo;
@@ -6137,29 +6139,31 @@
     /* moon body */
     ctx.save();
     ctx.translate(moon.x, moon.y);
-    ctx.rotate(-.16);
-    const moonFill = ctx.createLinearGradient(-moon.r, -moon.r, moon.r, moon.r);
-    moonFill.addColorStop(0, "#fbf4d7");
-    moonFill.addColorStop(.58, "#e6dfbd");
-    moonFill.addColorStop(1, "#b8c1a8");
-    ctx.fillStyle = moonFill;
+    const r = moon.r;
+    ctx.strokeStyle = "rgba(243,160,177,.44)";
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(0, 0, moon.r, 0, TAU);
-    ctx.fill();
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.fillStyle = "rgba(112,126,109,.12)";
-    const craters = [
-      [-.34, -.2, .2], [.25, -.33, .12], [.12, .21, .26], [-.23, .31, .09], [.43, .16, .07]
-    ];
-    for (const cr of craters) {
-      ctx.beginPath();
-      ctx.arc(cr[0] * moon.r, cr[1] * moon.r, cr[2] * moon.r, 0, TAU);
-      ctx.fill();
+    ctx.ellipse(0, 0, r * 1.65, r * .56, -.29, 0, TAU);
+    ctx.stroke();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, TAU);
+    ctx.clip();
+    const disc = ctx.createLinearGradient(0, -r, 0, r);
+    disc.addColorStop(0, "#ffedbe");
+    disc.addColorStop(.42, "#ffb18e");
+    disc.addColorStop(1, "#ef588f");
+    ctx.fillStyle = disc;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.fillStyle = "#4d3257";
+    for (let i = 0; i < 8; i++) {
+      ctx.fillRect(-r, r * (-.06 + i * .147), r * 2, r * (.012 + i * .009));
     }
-    ctx.fillStyle = "rgba(255,255,237,.23)";
+    ctx.restore();
     ctx.beginPath();
-    ctx.arc(-.19 * moon.r, -.14 * moon.r, moon.r * .68, 0, TAU);
-    ctx.fill();
+    ctx.ellipse(0, 0, r * 1.65, r * .56, -.29, .04, Math.PI);
+    ctx.strokeStyle = "#f6acae";
+    ctx.stroke();
     ctx.restore();
 
     const ring = ctx.createRadialGradient(moon.x, moon.y, moon.r * .93, moon.x, moon.y, moon.r * 1.25);
@@ -6437,10 +6441,10 @@
   function drawRoad(t, horizon, roadTop) {
     const roadH = H - roadTop;
     const road = ctx.createLinearGradient(0, roadTop, 0, H);
-    road.addColorStop(0, "#0b171b");
-    road.addColorStop(.26, "#101c1f");
-    road.addColorStop(.72, "#0b1417");
-    road.addColorStop(1, "#050b0e");
+    road.addColorStop(0, "#242139");
+    road.addColorStop(.26, "#1c2033");
+    road.addColorStop(.72, "#111525");
+    road.addColorStop(1, "#080d19");
     ctx.fillStyle = road;
     ctx.fillRect(-30, roadTop, W + 60, roadH + 40);
 
@@ -6453,7 +6457,7 @@
     ctx.fillRect(0, roadTop, W, roadH * .52);
 
     /* shoulder seam */
-    ctx.fillStyle = "rgba(206,219,192,.16)";
+    ctx.fillStyle = "rgba(88,221,236,.55)";
     ctx.fillRect(0, roadTop + Math.max(4, roadH * .028), W, Math.max(1, cam.s * 1.1));
     ctx.fillStyle = "rgba(0,0,0,.42)";
     ctx.fillRect(0, roadTop + Math.max(5, roadH * .028) + 1, W, 3);
@@ -11960,6 +11964,7 @@
     state.wheelArcClock = 0;
     state.wheelFlash = 0;
     state.speed = Math.max(state.speed, 76);
+    if (trial.on) trial.best = Math.max(trial.best, state.speed);
     state.nextStrike = Math.max(state.nextStrike, 4.2);
     state.strikeMax = Math.max(state.strikeMax, state.nextStrike);
     if (!activeSkin.riderArt) spawnWheelArcBurst(10);
@@ -12184,6 +12189,131 @@
     }
   }
 
+  // Paint the repeating architecture once, including small signs and lit interiors.
+  const harborWidth = 1440;
+  const harborHeight = 360;
+  let harborTile;
+  function makeHarborTile() {
+    const tile = document.createElement("canvas");
+    tile.width = harborWidth * 1.5;
+    tile.height = harborHeight * 1.5;
+    const g = tile.getContext("2d");
+    g.scale(1.5, 1.5);
+    const random = mulberry32(6723);
+    function rect(x, y, w, h, color) {
+      g.fillStyle = color;
+      g.fillRect(x, y, w, h);
+    }
+    const signs = ["電脈", "深港", "潮汐", "夜航"];
+    let x = 4;
+    let tower = 0;
+    while (x < harborWidth - 22) {
+      const w = Math.min(40 + random() * 60, harborWidth - x - 4);
+      const h = 62 + random() * 110 + (tower % 4 === 1 ? 102 : 0);
+      const y = harborHeight - h;
+      const side = Math.floor(w * .24);
+      const edge = tower % 3 === 0 ? "#ef5198" : "#43c5da";
+      rect(x, y + 11, w, h - 11, "#101329");
+      rect(x + side, y, w - side - 5, h, "#191b37");
+      rect(x + w - side, y + 12, side, h - 12, "#0c1328");
+      rect(x + side, y, w - side - 5, 1.2, edge);
+      rect(x + side + 4, y - 6, w * .32, 6, "#16192c");
+      if (tower % 4 === 1) {
+        rect(x + w * .53, y - 40, 1.5, 38, "#65516c");
+        rect(x + w * .53 - 1, y - 40, 3, 2, "#ff857c");
+        rect(x + w * .28, y - 16, w * .42, 11, "#21223c");
+      }
+      if (tower % 3 === 1) {
+        for (let j = 23; j < h - 7; j += 10) {
+          rect(x - 2, y + j, w + 4, 2.5, "#313049");
+          rect(x, y + j, w * .55, .8, "#827088");
+        }
+      }
+      for (let row = 15; row < h - 4; row += 8) {
+        for (let col = 5; col < w - 4; col += 7) {
+          const n = random();
+          if (n < .46) continue;
+          const colors = ["#3e536d", "#5998a1", "#aa8988", "#4f506e"];
+          rect(x + col, y + row, 2 + random() * 2.5, 2, colors[Math.floor(random() * colors.length)]);
+        }
+      }
+      if (tower % 2 === 0 && w > 30) {
+        const signX = x + w - 15, signY = y + 23;
+        g.save();
+        g.shadowBlur = 9;
+        g.shadowColor = edge;
+        rect(signX, signY, 14, 35, edge);
+        g.restore();
+        rect(signX + 1, signY + 1, 12, 33, "#251a31");
+        g.fillStyle = edge;
+        g.textAlign = "center";
+        g.font = 'bold 11px "PingFang SC", sans-serif';
+        const chars = signs[(tower / 2) % signs.length];
+        g.fillText(chars[0], signX + 7, signY + 13);
+        g.fillText(chars[1], signX + 7, signY + 27);
+      } else if (w > 38) {
+        rect(x + 3, y + h * .55, w * .55, 7, "#191529");
+        rect(x + 4, y + h * .55, w * .52, 1.5, edge);
+      }
+      x += w + 5 + random() * 15;
+      tower++;
+    }
+    return tile;
+  }
+
+  function drawHarbor(t, horizon, roadTop) {
+    if (!harborTile) harborTile = makeHarborTile();
+    const s = Math.min(W / H < .82 ? W / 680 : H / 880, 1.28);
+    const width = harborWidth * s, height = harborHeight * s;
+    const drift = reduceMotion ? 0 : (state.distance * .023 + t * 2) * s;
+    const offset = drift % width;
+    const depth = Math.max(1, roadTop - horizon);
+    const water = ctx.createLinearGradient(0, horizon, 0, roadTop);
+    water.addColorStop(0, "#403151");
+    water.addColorStop(.4, "#20243c");
+    water.addColorStop(1, "#0c182a");
+    ctx.fillStyle = water;
+    ctx.fillRect(-30, horizon, W + 60, depth + 2);
+    for (let x = -offset - width; x < W + 30; x += width) {
+      ctx.drawImage(harborTile, x, horizon - height, width + .25, height + .5);
+      ctx.save();
+      ctx.translate(x, horizon);
+      ctx.scale(1, -1);
+      ctx.globalAlpha = .44;
+      ctx.drawImage(harborTile, 0, -depth, width + .25, depth);
+      ctx.restore();
+    }
+    ctx.save();
+    const phase = reduceMotion ? 0 : t * .7;
+    const ripples = performanceMode ? 32 : 78;
+    for (let i = 0; i < ripples; i++) {
+      const y = ((i * .61803399) % 1);
+      const x = ((i * .38118 + Math.sin(phase + i) * .005 + 1) % 1) * W;
+      ctx.fillStyle = i % 3 ? "rgba(100,201,221,.21)" : "rgba(253,115,175,.32)";
+      ctx.fillRect(x, horizon + depth * y, (4 + 16 * y) * s, .7 + y * .5);
+    }
+    // The elevated local line sits between the waterfront and the rider.
+    const trackY = horizon + depth * .25;
+    const spacing = 155 * s;
+    ctx.fillStyle = "#13182a";
+    for (let x = -(drift * 1.7 % spacing); x < W; x += spacing) {
+      ctx.fillRect(x, trackY, 4 * s, depth * .38);
+      ctx.fillRect(x - 4 * s, trackY + 3 * s, 12 * s, 4 * s);
+    }
+    ctx.fillRect(-20, trackY, W + 40, Math.max(2, 4 * s));
+    ctx.fillStyle = "#a0759b";
+    ctx.fillRect(-20, trackY, W + 40, .8);
+    const trainX = reduceMotion ? W * .72 : ((W * .72 + t * 25 * s - drift * .3) % (W + 260 * s) + W + 260 * s) % (W + 260 * s) - 100 * s;
+    for (let car = 0; car < 4; car++) {
+      const x = trainX + car * 29 * s;
+      ctx.fillStyle = "#1b2240";
+      ctx.fillRect(x, trackY - 7 * s, 27 * s, 7 * s);
+      ctx.fillStyle = "#85e2e7";
+      for (let j = 0; j < 5; j++) ctx.fillRect(x + (2 + j * 5) * s, trackY - 5 * s, 3 * s, 1.7 * s);
+    }
+    ctx.restore();
+  }
+
   function drawScene(t) {
     const { horizon, roadTop, moon } = skyMetrics();
     const shake = state.shake;
@@ -12204,8 +12334,8 @@
     drawSky(t, horizon, moon);
     drawSkyWhale(t);
     drawRidges(horizon, t);
-    drawCity(horizon, clamp(Math.min(W, H) / 850, .62, 1.05), (t * 2.7 + state.distance * .005) % city.total);
-    drawOcean(t, horizon, roadTop, moon);
+    drawCity(horizon, clamp(Math.min(W, H) / 690, .75, 1.4), t * 1.8 + state.distance * .006);
+    drawHarbor(t, horizon, roadTop);
     drawRoad(t, horizon, roadTop);
     drawRoadWake(t);
     drawRoadside(t, roadTop);
@@ -12872,9 +13002,7 @@
     gearBtn.blur();
   });
 
-  /* ---------- 30 秒挑战 ----------
-     一局一个临时数组：开局 new 一个，每帧把当帧速度推进去，30 秒到点用 reduce
-     取最大值作为本局结果，然后把数组丢掉。下一局重新 new，互不干扰。 */
+  /* ---------- 30 秒挑战 ---------- */
   const TRIAL_SECONDS = 30;
   const TRIAL_HOLD = 6;
   const trialBtn = document.getElementById("trial-btn");
@@ -12884,7 +13012,7 @@
   const trial = {
     on: false,
     left: 0,
-    samples: null,
+    restartAfter: 0,
     best: 0,
     result: null,
     holdUntil: 0,
@@ -12897,7 +13025,7 @@
   }
 
   function startTrial() {
-    trial.samples = [];                 /* 本局的临时数组 */
+    if (trial.on) return;
     trial.best = state.speed;
     trial.left = TRIAL_SECONDS;
     trial.on = true;
@@ -12905,18 +13033,20 @@
     trial.rounds += 1;
     trialBtn.classList.remove("done");
     trialBtn.classList.add("running");
-    trialLabel.textContent = "计时中";
+    trialLabel.textContent = "结束挑战";
+    trialBtn.title = "提前结束，记录本局最高速度";
+    trialBtn.setAttribute("aria-label", trialBtn.title);
     trialStateEl.textContent = TRIAL_SECONDS.toFixed(1) + "s";
     trialFill.style.width = "0%";
-    liveStatus.textContent = `第 ${trial.rounds} 局开始，30 秒。把速度顶到最高。`;
+    liveStatus.textContent = `第 ${trial.rounds} 局开始，再按结束挑战可提前记录本局最速。`;
   }
 
   function endTrial() {
-    const samples = trial.samples || [];
-    /* 本局结果 = 这一局数组里的最大值 */
-    const result = samples.reduce((fastest, v) => (v > fastest ? v : fastest), 0);
+    if (!trial.on) return;
+    const result = Math.max(trial.best, state.speed);
     trial.on = false;
-    trial.samples = null;               /* 丢掉本局数组 */
+    // A stop click arriving just after timeout must not start another round.
+    trial.restartAfter = trial.left <= 0 ? performance.now() + 300 : 0;
     trial.result = result;
     trial.holdUntil = state.time + TRIAL_HOLD;
     trial.sessionBest = Math.max(trial.sessionBest, result);
@@ -12925,15 +13055,15 @@
     trialLabel.textContent = "本局最速";
     trialStateEl.textContent = `${result.toFixed(1)} km/h`;
     trialFill.style.width = "100%";
-    trialBtn.title = `第 ${trial.rounds} 局 ${result.toFixed(1)} 公里/小时`;
+    trialBtn.title = `第 ${trial.rounds} 局最快 ${result.toFixed(1)} 公里/小时，点击开始下一局`;
+    trialBtn.setAttribute("aria-label", trialBtn.title);
     liveStatus.textContent = `第 ${trial.rounds} 局结束，本局最快 ${result.toFixed(1)} 公里/小时` +
       (result >= trial.sessionBest - 1e-6 ? "，今晚最好的一次。" : `。今晚最好 ${trial.sessionBest.toFixed(1)}。`);
   }
 
   function trialTick(dt) {
     if (trial.on) {
-      trial.samples.push(state.speed);        /* 逐帧推进本局数组 */
-      if (state.speed > trial.best) trial.best = state.speed;
+      trial.best = Math.max(trial.best, state.speed);
       trial.left -= dt;
       if (trial.left <= 0) endTrial();
       return;
@@ -12944,14 +13074,24 @@
       trialBtn.classList.remove("done");
       trialLabel.textContent = "计时挑战";
       trialStateEl.textContent = trialIdleText();
+      trialBtn.title = `开始 30 秒挑战，本次会话最快 ${trial.sessionBest.toFixed(1)} 公里/小时`;
+      trialBtn.setAttribute("aria-label", trialBtn.title);
       trialFill.style.width = "0%";
     }
   }
 
+  trialBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.repeat) e.preventDefault();
+  });
+
   trialBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    startTrial();
-    trialBtn.blur();
+    if (trial.on) {
+      endTrial();
+    } else if (e.detail <= 1 && performance.now() >= trial.restartAfter) {
+      startTrial();
+    }
+    if (e.detail > 0) trialBtn.blur();
   });
 
   world.addEventListener("pointerdown", (e) => {
