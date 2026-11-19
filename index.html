@@ -849,9 +849,9 @@
     color:rgba(243,234,217,.38);text-align:center;
   }
   .rank-hint b{color:var(--acid);font-weight:500;}
-  .rank-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 16px 10px;}
+  .rank-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:14px 16px 10px;}
   .rank-actions button{
-    min-height:42px;border:1px solid rgba(143,250,255,.24);background:rgba(56,219,232,.06);
+    min-height:44px;border:1px solid rgba(143,250,255,.24);background:rgba(56,219,232,.06);
     color:var(--cream);cursor:pointer;font-family:var(--sans);font-size:11px;font-weight:800;
     letter-spacing:.12em;text-transform:uppercase;transition:background .2s,border-color .2s;
   }
@@ -1728,7 +1728,7 @@
     display: flex; align-items: stretch; gap: 8px;
     left: auto; right: var(--hud-right); bottom: var(--hud-bottom);
   }
-  .controls > .btn { min-height: 55px; border-radius: 8px; box-shadow: none; }
+  .controls > .btn { min-height: 55px; border-radius: 8px; box-shadow: none; touch-action: manipulation; }
   .controls .btn-primary {
     min-width: 0; padding: 0 15px; gap: 9px;
     background: var(--hud-accent, var(--cyan)); color: #051217;
@@ -2065,8 +2065,9 @@
     </div>
     <p class="rank-hint" id="rank-hint">整点结算 · 前三名解锁「黄金时刻」</p>
     <div class="rank-actions">
-      <button id="rank-refresh" type="button">刷新 / REFRESH</button>
-      <button id="rank-done" type="button">关闭 / CLOSE</button>
+      <button id="rank-settle" type="button">结算本局</button>
+      <button id="rank-refresh" type="button">刷新</button>
+      <button id="rank-done" type="button">关闭</button>
     </div>
     <p class="skin-footnote" id="rank-footnote">排行榜在服务器上，每人只留最好的一局，破纪录才会覆盖。成绩上传时服务端会按同一套公式复核，改过的分进不来。</p>
   </section>
@@ -2207,9 +2208,9 @@
   <h2 id="guide-title">玩法说明</h2>
   <dl class="guide-rules">
     <dt>加速</dt><dd>按空格或点「召唤闪电」。</dd>
-    <dt>二档</dt><dd>按 Shift 或点「雷霆二档」，开启后连按空格可突破。</dd>
+    <dt>二档</dt><dd>点「雷霆二档」或按 Shift，再连点闪电或连按空格突破。</dd>
     <dt>得分</dt><dd>高速骑行、连击和完成契约都能得分。</dd>
-    <dt>挑战</dt><dd>计时挑战比峰速，全球榜比单局征程分。</dd>
+    <dt>结算</dt><dd>挑战结束记峰速并结算征程，也可在榜单点「结算本局」。</dd>
   </dl>
   <button class="btn" id="guide-close" type="button" autofocus>返回游戏</button>
 </dialog>
@@ -2431,6 +2432,7 @@
   }
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const isCoarse = window.matchMedia("(pointer: coarse)").matches;
+  const hasTouch = isCoarse || navigator.maxTouchPoints > 0;
   const PERFORMANCE_KEY = "thunder-pelican.performance.v1";
   let performanceMode = false;
   try {
@@ -2518,7 +2520,7 @@
   const SCORE_LOG_CAP = 720;      /* events kept in memory (~24 min of samples) */
   const PLAYER_STORAGE_KEY = "thunder-pelican.player.v1";
   const PENDING_KEY = "thunder-pelican.pending.v1";  /* 没送出去的成绩，下次联网补交 */
-  const PENDING_MAX = 3;
+  const PENDING_MAX = 12;
   const TRACE_INTERVAL = .25;     /* seconds between proof-of-speed samples */
   const TRACE_MAX_POINTS = 2000;  /* a 25-minute ride at one point per second */
   const STREAK_STEP = 20;         /* clean seconds per streak step */
@@ -2678,6 +2680,7 @@
     engine: null,
     startedAt: 0,
     bestSpeed: 46.2,
+    bestSpeedAt: 0,
     distanceKm: 0,
     streakBest: 1,
     milestone: 0,
@@ -2703,6 +2706,7 @@
     ride.id = "run_" + Date.now().toString(36) + "_" + seed.toString(36);
     ride.startedAt = state.time;
     ride.bestSpeed = state.speed;
+    ride.bestSpeedAt = 0;
     ride.distanceKm = 0;
     ride.streakBest = 1;
     ride.milestone = 0;
@@ -2973,6 +2977,7 @@
     lastError: "",
     lastSubmit: null,       /* { id, accepted, verified, rank, total, replaced, reason } */
     waiters: [],
+    submitting: new Map(),
 
     resolve() {
       let url = "";
@@ -3004,37 +3009,39 @@
         .finally(() => { if (timer) window.clearTimeout(timer); });
     },
 
-    /* 一局成绩：先交给服务器审，通过了才进榜。网络失败就排队，下次打开补交。 */
-    submit(payload, options) {
-      const opts = options || {};
-      if (!this.on()) {
-        if (opts.queue !== false) this.enqueue(payload);
-        return Promise.resolve({ id: payload.id, accepted: false, verified: false, reason: "no_endpoint" });
-      }
+    /* 先保存，网页在关页或退后台时可能收不到 fetch 的回执。 */
+    submit(payload) {
+      const previous = this.submitting.get(payload.id);
+      if (previous) return previous;
+      this.enqueue(payload);
+      if (!this.on()) return Promise.resolve({ id: payload.id, accepted: false, reason: "no_endpoint" });
+
       const body = JSON.stringify(payload);
       const init = {
         method: "POST",
         headers: { "content-type": "application/json" },
         body,
-        keepalive: body.length < 60000   /* 活过 pagehide，但只有 64 KB 预算 */
+        keepalive: body.length < 60000
       };
-      return this.request("/runs", init, 8000)
-        .then(({ ok, data }) => {
+      const task = this.request("/runs", init, 8000)
+        .then(({ status, ok, data }) => {
           const result = Object.assign({ id: payload.id, accepted: false, verified: false }, data || {});
           if (!ok) result.accepted = false;
-          /* 服务器明确拒收的不再重试；网络/5xx 才排队 */
-          if (result.accepted || (result.reason && result.reason !== "network")) this.dequeue(payload.id);
-          else if (opts.queue !== false) this.enqueue(payload);
+          const rejected = status >= 400 && status < 500 && status !== 408 && status !== 429;
+          if (result.accepted || rejected) this.dequeue(payload.id);
+          else result.reason = "network";
           this.settleSubmit(result);
-          this.refresh();
+          if (result.accepted) this.refresh();
           return result;
         })
-        .catch((err) => {
-          if (opts.queue !== false) this.enqueue(payload);
-          const result = { id: payload.id, accepted: false, verified: false, reason: "network", error: String((err && err.message) || err) };
+        .catch(() => {
+          const result = { id: payload.id, accepted: false, verified: false, reason: "network" };
           this.settleSubmit(result);
           return result;
-        });
+        })
+        .finally(() => this.submitting.delete(payload.id));
+      this.submitting.set(payload.id, task);
+      return task;
     },
 
     enqueue(payload) {
@@ -3051,10 +3058,7 @@
     /* 上次没送出去的成绩，联网后补交；服务器的 runId 去重保证不会重复计次 */
     flushPending() {
       if (!this.on()) return;
-      const list = loadPending();
-      if (!list.length) return;
-      savePending([]);
-      for (const payload of list) this.submit(payload).catch(() => {});
+      for (const payload of loadPending()) this.submit(payload);
     },
 
     settleSubmit(result) {
@@ -3250,9 +3254,15 @@
   });
   rankClose.addEventListener("click", closeRankPanel);
   rankDoneBtn.addEventListener("click", closeRankPanel);
+  document.getElementById("rank-settle").addEventListener("click", () => {
+    closeRankPanel();
+    endTrial();
+    settleExpedition();
+  });
   rankModal.querySelector("[data-rank-close]").addEventListener("click", closeRankPanel);
   rankRefreshBtn.addEventListener("click", () => {
     if (!Leaderboard.on()) return;
+    Leaderboard.flushPending();
     Leaderboard.refresh();
   });
 
@@ -3331,17 +3341,33 @@
     settleLineEl.textContent = `${place} · 距结算 ${mm}:${String(ss).padStart(2, "0")}`;
   }
 
-  /* bank the live run: rider stats first, then hand it to the server board.
-     本地不再存榜，所以这里没有「入榜」这一步——服务器收下了才算入榜。 */
+  function canBankRide() {
+    return ride.open && state.time - ride.startedAt >= 8 && Math.round(ride.engine.score) >= 60;
+  }
+
+  function addTracePoint(trace, seconds, speed) {
+    const point = [Math.round(seconds * 10) / 10, Math.round(speed * 10) / 10];
+    const index = trace.findIndex(sample => sample[0] >= point[0]);
+    if (index === -1) trace.push(point);
+    else if (trace[index][0] !== point[0]) trace.splice(index, 0, point);
+    else if (trace[index][1] < point[1]) trace[index] = point;
+  }
+
   function bankRide(reason) {
-    if (!ride.open) return null;
+    const eligible = canBankRide();
     ride.open = false;
-    const duration = Math.max(0, state.time - ride.startedAt);
+    if (!eligible) return null;
+    const duration = state.time - ride.startedAt;
     const result = ScoreEngine.end(ride.engine, state.time, reason);
     const trace = ride.trace.slice();
     ride.trace = [];
-    /* 太短的行程（快速刷新、误切骑手）连上传都不发 */
-    if (duration < 8 || result.score < 60) return null;
+    if (state.speed > ride.bestSpeed) {
+      ride.bestSpeed = state.speed;
+      ride.bestSpeedAt = duration;
+    }
+    // 固定采样间隔容易漏掉结算前的瞬间峰速。
+    addTracePoint(trace, ride.bestSpeedAt, ride.bestSpeed);
+    addTracePoint(trace, duration, state.speed);
     /* 个人最佳幽灵线是本机的东西，和排行榜无关，照旧保留 */
     const previousGhost = loadGhost();
     if (!previousGhost || result.score > previousGhost.score) {
@@ -3376,7 +3402,7 @@
       grantXp(Math.max(1, Math.floor(result.score / 120)));
       persistRiderStore();
     }
-    Leaderboard.submit({
+    const submission = Leaderboard.submit({
       id: run.id,
       ownerId: run.ownerId,
       name: run.name,
@@ -3399,7 +3425,28 @@
       trace,
       traceHash: ScoreEngine.fnv32(trace.map((p) => p[0] + ":" + p[1]).join("|")).toString(16).padStart(8, "0")
     });
-    return { run, duration };
+    return { run, duration, submission };
+  }
+
+  function settleExpedition() {
+    if (!ride.open) return;
+    const score = Math.round(ride.engine.score).toLocaleString("en-US");
+    const banked = bankRide("retired");
+    startRide();
+    if (!banked) {
+      toastRider("征程结束", `${score} 分 · 未达到 8 秒、60 分的入榜条件`);
+      return;
+    }
+    const nextRide = ride.id;
+    toastRider("征程已结算", `${score} 分 · 正在提交`);
+    banked.submission.then(result => {
+      if (ride.id !== nextRide) return;
+      const detail = result.accepted
+        ? result.replaced ? `全球第 ${result.rank} 名` : "已记录 · 保留较高纪录"
+        : result.reason === "network" ? "已保存 · 待补交"
+        : result.reason === "no_endpoint" ? "已保存在本机" : "全球榜未收录";
+      toastRider("征程已结算", `${score} 分 · ${detail}`);
+    });
   }
 
   const C = {
@@ -4412,12 +4459,17 @@
       : `三秒峰值 ${state.gearCpsPeak} CPS，二档上限 ${state.limitCap}。`;
   }
 
-  function registerSpacePress() {
-    if (state.gearTime <= 0 || state.paused || state.charred > 0) return;
+  function registerStrikePress() {
+    if (state.gearTime <= 0 || state.paused || state.charred > 0 || pressure.phase !== "idle") return;
     if (state.gearBoostResolved || state.gearElapsed >= GEAR_CPS_WINDOW) return;
     const now = performance.now();
     state.spacePressTimes.push(now);
     state.gearCpsPeak = Math.max(state.gearCpsPeak, Math.min(GEAR_CPS_MAX, getSpaceCPS(now)));
+  }
+
+  function handleStrikeInput(x = null, y = null) {
+    registerStrikePress();
+    triggerStrike(true, x, y);
   }
 
   function checkSkinUnlocks(announce = true) {
@@ -4538,17 +4590,22 @@
   });
   skinClose.addEventListener("click", closeSkinPanel);
   skinModal.querySelector("[data-skin-close]").addEventListener("click", closeSkinPanel);
-  window.addEventListener("pagehide", () => {
+  function retirePageRide() {
+    endTrial();
+    abortStormRun();
     bankRide("retired");
     persistSkinProgress();
+  }
+  function resumePageRide() {
+    lastTime = performance.now();
+    if (!ride.open && !wipeResultOpen) startRide();
+    Leaderboard.flushPending();
+  }
+  window.addEventListener("pagehide", retirePageRide);
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) resumePageRide();
   });
-  window.addEventListener("beforeunload", () => {
-    bankRide("retired");
-    persistSkinProgress();
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) persistSkinProgress();
-  });
+  window.addEventListener("online", () => Leaderboard.flushPending());
 
   /* ---------- rider accounts: local identity, personal records and crew board ---------- */
   const RIDER_STORAGE_KEY = "thunder-pelican.riders.v1";
@@ -12177,8 +12234,8 @@
     gearBtn.setAttribute("aria-pressed", "true");
     gearBtn.setAttribute("aria-label", "雷霆二档运行中，龙抬头后俯身加速");
     gearBtn.title = "雷霆二档 · 龙抬头";
-    gearStateEl.textContent = "连按空格";
-    liveStatus.textContent = "二档开了。前三秒连按 Space 达到 3 CPS 可提升上限；幸运时按五次频率结算。";
+    gearStateEl.textContent = hasTouch ? "连点闪电" : "连按空格";
+    liveStatus.textContent = "二档已开启，前三秒连点闪电或连按空格可提升速度上限。";
     if (!activeSkin.riderArt) {
       spawnSpark(cam.x + BIKE.rear.x * cam.s, cam.y + BIKE.rear.y * cam.s, 10, 145);
       spawnSpark(cam.x + BIKE.front.x * cam.s, cam.y + BIKE.front.y * cam.s, 8, 135);
@@ -13221,7 +13278,7 @@
 
   strikeBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    triggerStrike(true);
+    handleStrikeInput();
     strikeBtn.blur();
   });
 
@@ -13290,11 +13347,16 @@
       (result >= trial.sessionBest - 1e-6 ? "，今晚最好的一次。" : `。今晚最好 ${trial.sessionBest.toFixed(1)}。`);
   }
 
+  function finishTrial() {
+    endTrial();
+    settleExpedition();
+  }
+
   function trialTick(dt) {
     if (trial.on) {
       trial.best = Math.max(trial.best, state.speed);
       trial.left -= dt;
-      if (trial.left <= 0) endTrial();
+      if (trial.left <= 0) finishTrial();
       return;
     }
     /* 结果挂 6 秒后回到待机 */
@@ -13316,7 +13378,7 @@
   trialBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (trial.on) {
-      endTrial();
+      finishTrial();
     } else if (e.detail <= 1 && performance.now() >= trial.restartAfter) {
       startTrial();
     }
@@ -13329,7 +13391,7 @@
     if (e.target.closest("#settings-pop")) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     knockSkyWhale(e.clientX, e.clientY);
-    triggerStrike(true, e.clientX, e.clientY);
+    handleStrikeInput(e.clientX, e.clientY);
   });
 
   world.addEventListener("pointermove", (e) => {
@@ -13393,10 +13455,7 @@
     }
     if (e.code === "Space" || e.key === " ") {
       e.preventDefault();
-      if (!e.repeat) {
-        registerSpacePress();
-        triggerStrike(true);
-      }
+      if (!e.repeat) handleStrikeInput();
     }
     if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat) {
       activateGearTwo();
@@ -13411,9 +13470,13 @@
   document.addEventListener("visibilitychange", () => {
     lastTime = performance.now();
     if (document.hidden) {
+      // iOS 关闭后台应用时可能不会再触发 pagehide。
+      if (hasTouch && canBankRide()) retirePageRide();
+      else persistSkinProgress();
       audio.disable();
       musicEl.pause();
     } else {
+      resumePageRide();
       applyAudioMix();
     }
   });
@@ -13508,9 +13571,6 @@
     const worldSpeed = state.speed * 9.25;
     state.distance += worldSpeed * dt;
 
-    /* 30 秒挑战：计时、采样、结算 */
-    trialTick(dt);
-
     /* unlock skins against the fastest speed ever reached */
     if (state.speed > state.bestSpeed + .0001) {
       state.bestSpeed = state.speed;
@@ -13538,6 +13598,7 @@
       ride.distanceKm += state.speed * dt / 3600;
       if (state.speed > ride.bestSpeed) {
         ride.bestSpeed = state.speed;
+        ride.bestSpeedAt = state.time - ride.startedAt;
         /* every 10 km/h of fresh overspeed banks a hyper bonus */
         if (state.speed > rated + 2) {
           const mark = Math.floor((state.speed - rated) / HYPER_MARK_STEP);
@@ -13585,6 +13646,8 @@
         }
       }
     }
+
+    trialTick(dt);
 
     /* cadence is linked to road speed: faster bike, faster legs */
     const cadenceTarget = clamp(
