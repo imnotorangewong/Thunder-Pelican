@@ -1658,6 +1658,7 @@
     --hud-left: max(var(--hud-side), env(safe-area-inset-left, 0px));
     --hud-right: max(var(--hud-side), env(safe-area-inset-right, 0px));
     --hud-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    --guide-bottom: var(--hud-bottom);
     --hud-panel: rgba(5, 17, 24, .88);
     --hud-edge: color-mix(in srgb, var(--hud-accent, var(--cyan)) 27%, transparent);
   }
@@ -1764,13 +1765,20 @@
   }
   .unlock-notice strong { color: #f5fbff; font-size: 15px; line-height: 1.35; }
   .unlock-notice span { color: #bad5e1; font-size: 12px; }
+  #guide-btn {
+    position: absolute; z-index: 13; left: var(--hud-left); bottom: var(--guide-bottom);
+    min-height: 44px; padding: 0 14px; border: 1px solid var(--hud-edge);
+    border-radius: 7px; background: var(--hud-panel); font-size: 15px; font-weight: 700;
+  }
+  #guide-btn:hover { border-color: var(--hud-accent, var(--cyan)); background: #10252d; }
   .rider-toast {
     top: auto; left: var(--hud-left); right: auto;
-    bottom: calc(var(--hud-bottom) + 8px); max-width: min(280px, calc(100% - 32px));
+    bottom: calc(var(--guide-bottom) + 52px); max-width: min(280px, calc(100% - 32px));
   }
   @keyframes unlock-in { from { opacity: 0; transform: translateX(8px); } }
   @media (max-width: 760px) {
-    .world { --hud-side: 12px; }
+    .world { --hud-side: 12px; --guide-bottom: calc(var(--hud-bottom) + 59px); }
+    #world #dragon-dock { bottom: calc(var(--guide-bottom) + 52px); }
     .brand { gap: 6px; }
     .brand-mark { width: 21px; height: 21px; margin: 0 3px; }
     .brand-mark svg { width: 12px; height: 12px; }
@@ -1791,7 +1799,6 @@
     .controls > .btn { min-height: 51px; }
     .controls :is(.btn-gear, .btn-trial) { min-width: 76px; padding: 0 7px; }
     .controls .btn-copy b { font-size: 15px; }
-    .rider-toast { bottom: calc(var(--hud-bottom) + 62px); }
   }
   @media (max-height: 480px) and (orientation: landscape) {
     .telemetry { top: calc(var(--hud-top) + 54px); }
@@ -1836,6 +1843,17 @@
 #creator-close { cursor:pointer; min-height:44px; padding:6px 18px; border:1px solid #9e7a4e;
   border-radius:6px; background:#392e24; color:#ffe2b3; font:inherit; }
 #creator-note :focus-visible { outline:2px solid #ffdc9e; outline-offset:3px; }
+#game-guide {
+  width: min(420px, calc(100% - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+  margin: auto; padding: clamp(16px, 4vw, 24px); color: var(--cream); background: #0a1a23;
+  border: 1px solid #45616b; border-radius: 12px; box-shadow: 0 20px 60px #0009;
+}
+#game-guide::backdrop { background: rgba(3, 11, 16, .7); }
+#guide-title { margin: 0 0 14px; font-size: 24px; line-height: 1.2; }
+.guide-rules { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 8px; margin: 0; font-size: 15px; line-height: 1.5; }
+.guide-rules dt { color: var(--cyan); font-weight: 700; }
+.guide-rules dd { margin: 0; }
+#guide-close { min-height: 44px; margin: 16px 0 0 auto; padding: 0 14px; border-radius: 7px; font-weight: 700; }
 </style>
 <link rel="stylesheet" href="assets/dragon/event.css">
 </head>
@@ -1920,6 +1938,7 @@
     </details>
   </aside>
 
+  <button class="btn" id="guide-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="game-guide">玩法</button>
   <div class="controls">
     <button class="btn btn-primary" id="strike-btn" type="button" aria-label="召唤闪电，快捷键空格">
       <span class="btn-icon" aria-hidden="true">
@@ -2183,6 +2202,17 @@
     <p class="achievement-hint">按 Esc 重新出发 · 本局成绩已入账</p>
   </section>
 </div>
+
+<dialog id="game-guide" aria-labelledby="guide-title">
+  <h2 id="guide-title">玩法说明</h2>
+  <dl class="guide-rules">
+    <dt>加速</dt><dd>按空格或点「召唤闪电」。</dd>
+    <dt>二档</dt><dd>按 Shift 或点「雷霆二档」，开启后连按空格可突破。</dd>
+    <dt>得分</dt><dd>高速骑行、连击和完成契约都能得分。</dd>
+    <dt>挑战</dt><dd>计时挑战比峰速，全球榜比单局征程分。</dd>
+  </dl>
+  <button class="btn" id="guide-close" type="button" autofocus>返回游戏</button>
+</dialog>
 
 <dialog id="creator-note" aria-labelledby="creator-title">
   <h2 id="creator-title">主创说</h2>
@@ -13145,29 +13175,34 @@
     syncSettingsUI();
   });
 
-  const creatorBtn = document.getElementById("creator-btn");
-  const creatorNote = document.getElementById("creator-note");
-  let creatorWasPaused = false;
-  creatorBtn.addEventListener("click", () => {
-    if (creatorNote.open) return;
-    setSettingsOpen(false);
-    creatorWasPaused = state.paused;
-    state.paused = true;
-    creatorBtn.setAttribute("aria-expanded", "true");
-    creatorNote.showModal();
-  });
-  creatorBtn.addEventListener("keydown", e => {
-    if (e.code === "Space") e.stopPropagation();
-  });
-  creatorNote.addEventListener("keydown", e => e.stopPropagation());
-  creatorNote.addEventListener("keyup", e => e.stopPropagation());
-  document.getElementById("creator-close").addEventListener("click", () => creatorNote.close());
-  creatorNote.addEventListener("close", () => {
-    state.paused = creatorWasPaused;
-    lastTime = performance.now();
-    creatorBtn.setAttribute("aria-expanded", "false");
-    creatorBtn.focus({preventScroll:true});
-  });
+  for (const [buttonId, dialogId, closeId] of [
+    ["creator-btn", "creator-note", "creator-close"],
+    ["guide-btn", "game-guide", "guide-close"]
+  ]) {
+    const button = document.getElementById(buttonId);
+    const dialog = document.getElementById(dialogId);
+    let wasPaused = false;
+    button.addEventListener("click", () => {
+      if (dialog.open) return;
+      setSettingsOpen(false);
+      wasPaused = state.paused;
+      state.paused = true;
+      button.setAttribute("aria-expanded", "true");
+      dialog.showModal();
+    });
+    button.addEventListener("keydown", e => {
+      if (e.code === "Space") e.stopPropagation();
+    });
+    dialog.addEventListener("keydown", e => e.stopPropagation());
+    dialog.addEventListener("keyup", e => e.stopPropagation());
+    document.getElementById(closeId).addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => {
+      state.paused = wasPaused;
+      lastTime = performance.now();
+      button.setAttribute("aria-expanded", "false");
+      button.focus({ preventScroll: true });
+    });
+  }
 
   settingsBtn.addEventListener("click", (e) => {
     e.stopPropagation();
