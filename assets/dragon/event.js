@@ -23,7 +23,7 @@ function createDragonEvent(game) {
     authorize.hidden = owned || !attempt?.link;
     if (!authorize.hidden) authorize.href = attempt.link;
     equip.hidden = !owned;
-    report.textContent = owned && message === initialMessage ? "两种形态可在皮肤库中随时切换。" : message;
+    report.textContent = owned && message === initialMessage ? "皮肤库可选常态。雷霆二档期间会变为另一形态，结束后恢复。" : message;
   }
   function say(text) { message=text; display(); }
   function clearAttempt() {
@@ -69,18 +69,26 @@ function createDragonEvent(game) {
     const button=e.target.closest("[data-dragon-form]");
     if (button) { clearInterval(rotation); showForm(button.dataset.dragonForm); }
   });
-  dialog.addEventListener("keydown", e=>e.stopPropagation());
-  dialog.addEventListener("keyup", e=>e.stopPropagation());
-  dialog.addEventListener("close", () => {
+  const keepModalKeys = e => { if (dialog.open) e.stopPropagation(); };
+  dialog.addEventListener("keydown", keepModalKeys);
+  dialog.addEventListener("keyup", keepModalKeys);
+  function resumeRide() {
+    if (dialog.open || wasPaused === undefined) return;
     clearInterval(rotation);
     game.resume(wasPaused);
+    wasPaused = undefined;
     badge.setAttribute("aria-expanded","false");
-    // Native dialog focus restoration preserves keyboard navigation.
-  });
-  $("dragon-dismiss").addEventListener("click", ()=>dialog.close());
+  }
+  function close() {
+    dialog.close();
+    // Accept a gear key on the very next input, before the queued close event.
+    resumeRide();
+  }
+  dialog.addEventListener("close", resumeRide);
+  $("dragon-dismiss").addEventListener("click", close);
   $("dragon-locker").addEventListener("click", open);
   equip.addEventListener("click", () => {
-    if (game.owns()) { game.equip(stage.dataset.form); dialog.close(); }
+    if (game.owns()) { game.equip(stage.dataset.form); close(); }
   });
   dockDragonBadge($("dragon-dock"),badge,game.storageKey,open);
 

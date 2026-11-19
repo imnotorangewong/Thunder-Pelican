@@ -2230,6 +2230,7 @@
 </dialog>
 <script src="assets/dragon/badge.js"></script>
 <script src="assets/dragon/event.js"></script>
+<script src="assets/dragon/gear-morph.js"></script>
 <script src="assets/skins/rider-upper-body.js"></script>
 <script src="assets/skins/rider-pedaling.js"></script>
 <script src="assets/skins/rider-pedaling-configs.js"></script>
@@ -3937,6 +3938,8 @@
     return (form && form.art) || skin.riderArt || null;
   }
 
+  const dragonMorph = createDragonGearMorph();
+  const dragonFlowCache = new Map();
   const riderArtImages = new Map();
   const riderPedaling = globalThis.RiderPedaling?.create(globalThis.RIDER_PEDALING_CONFIGS);
   function getRiderArtImage(skin, formOverride = dualDragonForm) {
@@ -4049,6 +4052,23 @@
     };
   }
 
+  // Share each palette between rim lighting, ribbons, sparkles and road reflections.
+  const dragonTints = Array.from({length: 65}, (_, i) => {
+    const mix = smoothstep(i / 64);
+    const color = (night, day) => {
+      const a = hexToRgb(night).split(",").map(Number), b = hexToRgb(day).split(",").map(Number);
+      return "#" + a.map((v, c) => Math.round(lerp(v, b[c], mix)).toString(16).padStart(2, "0")).join("");
+    };
+    const primary = color("#dd934e", "#c3c4ff");
+    const secondary = color("#ffd280", "#f4f9ff");
+    const accent = color("#896091", "#9b88ea");
+    const palette = makeLightningPalette({...SKIN_BY_ID.dual_dragon.lightning, primary, secondary, accent,
+      spark: secondary, deep: accent, glow: primary, hot: color("#fff0c0", "#ffffff")});
+    palette.rim = [palette.accentRGB, palette.primaryRGB, palette.secondaryRGB].map(s => s.split(",").map(Number));
+    return palette;
+  });
+  const currentDragonTint = () => dragonTints[Math.round(dragonMorph.mix * (dragonTints.length - 1))];
+
   let activeSkin = SKINS[0];
   let activeSkinId = "original";
   let S = activeSkin.colors;
@@ -4095,7 +4115,7 @@
   function updateSkinButton() {
     const count = unlockedSkinCount();
     const total = visibleSkinCount();
-    const formNote = activeSkinId === "dual_dragon" ? `，当前${DUAL_DRAGON_FORM_LABELS[dualDragonForm]}` : "";
+    const formNote = activeSkinId === "dual_dragon" ? `，常态为${DUAL_DRAGON_FORM_LABELS[dualDragonForm]}` : "";
     skinStateEl.textContent = `${count} / ${total}`;
     skinBtn.setAttribute("aria-label", `打开皮肤库，已解锁 ${count} / ${total}，当前 ${activeSkin.name} ${activeSkin.cn}${formNote}`);
     skinBtn.title = `SKIN · 当前 ${activeSkin.name} / ${activeSkin.cn}${formNote}`;
@@ -4106,7 +4126,7 @@
     const unlocked = skinUnlocked.has("dual_dragon");
     const current = DUAL_DRAGON_FORM_LABELS[dualDragonForm];
     const next = DUAL_DRAGON_FORM_LABELS[dualDragonForm === "dark" ? "light" : "dark"];
-    refs.formCurrent.textContent = `当前形态：${current}`;
+    refs.formCurrent.textContent = `常态：${current}`;
     refs.formAction.textContent = unlocked ? `切换至 ${next} ⇄` : "解锁后可切换昼夜形态";
     refs.formButton.disabled = !unlocked;
     refs.formButton.setAttribute("aria-pressed", dualDragonForm === "light" ? "true" : "false");
@@ -4134,17 +4154,37 @@
     }
     getRiderArtImage(SKIN_BY_ID.dual_dragon, form);
     liveStatus.textContent = activeSkinId === "dual_dragon"
-      ? `昼夜双龙已切换为${DUAL_DRAGON_FORM_LABELS[form]}。解锁和装备状态及紫色环绕流光保持不变。`
-      : `昼夜双龙已设为${DUAL_DRAGON_FORM_LABELS[form]}；装备后会显示此形态，紫色主题流光不变。`;
+      ? `昼夜双龙常态已设为${DUAL_DRAGON_FORM_LABELS[form]}，骑行流光会随形态变化。`
+      : `昼夜双龙已设为${DUAL_DRAGON_FORM_LABELS[form]}；装备后生效。`;
     syncDualDragonFormControls();
     return true;
+  }
+
+  function warmAlternateDragonForm() {
+    const warmForm = dualDragonForm === "dark" ? "light" : "dark";
+    const warmImage = getRiderArtImage(activeSkin, warmForm);
+    warmImage.decode().then(() => {
+      const warm = () => {
+        if (activeSkinId !== "dual_dragon") return;
+        const art = getSkinRiderArt(activeSkin, warmForm);
+        getRiderFlow(art, warmImage, art.rect);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        riderPedaling?.draw(canvas.getContext("2d"), art.src, warmImage, 0, art.rect, [0, 0, 1, 1]);
+      };
+      if (window.requestIdleCallback) requestIdleCallback(warm, {timeout: 600});
+      else setTimeout(warm, 0);
+    }).catch(() => {});
   }
 
   function applySkin(id, opts = {}) {
     const skin = SKIN_BY_ID[id];
     if (!skin || (!opts.force && !skinUnlocked.has(skin.id))) return false;
+    const equippingDragon = id === "dual_dragon" && activeSkinId !== id;
+    if (equippingDragon) dragonMorph.reset(dualDragonForm);
     activeSkin = skin;
     activeSkinId = skin.id;
+    if (equippingDragon) warmAlternateDragonForm();
     if (skin.riderArt) {
       getRiderArtImage(skin);
       if (skin.riderForms) {
@@ -4155,7 +4195,7 @@
       state.wheelArcs.length = 0;
     }
     S = state.charred > 0 ? makeCharPalette(skin.colors) : skin.colors;
-    L = makeLightningPalette(skin.lightning);
+    L = id === "dual_dragon" ? currentDragonTint() : makeLightningPalette(skin.lightning);
     const themeColor = (skin.auraColors && skin.auraColors[0]) || skin.lightning.primary;
     document.body.style.setProperty("--hud-accent", themeColor);
     strikeCopyEl.textContent = skin.riderArt ? "释放流光" : "召唤闪电";
@@ -4174,7 +4214,7 @@
       recordRiderEvent("skinSwaps");
       liveStatus.textContent = skin.riderArt
         ? skin.id === "dual_dragon"
-          ? `换上 ${skin.name} ${skin.cn}，当前${DUAL_DRAGON_FORM_LABELS[dualDragonForm]}；可在皮肤库切换形态，紫色主题流光环绕骑手。`
+          ? `换上 ${skin.name} ${skin.cn}，当前${DUAL_DRAGON_FORM_LABELS[dualDragonForm]}；二档期间变身，结束后恢复常态。`
           : `换上 ${skin.name} ${skin.cn}，主题流光会环绕骑手。`
         : `换上 ${skin.name} ${skin.cn}，闪电跟着变色。`;
     }
@@ -4220,7 +4260,7 @@
         row.setAttribute("aria-disabled", "true");
       }
       const sub = skin.id === "dual_dragon"
-        ? unlocked ? "UNLOCKED / 已解锁 · 昼夜形态可切换" : unlockProgressText(skin)
+        ? unlocked ? "手动选择常态 · 二档变身，结束后回到常态" : unlockProgressText(skin)
         : skin.pig
         ? "ACCIDENT UNLOCK / 雷击解锁"
         : skin.pigeon
@@ -11169,6 +11209,7 @@
 
   function getRiderFlow(art, image, sourceRect) {
     if (riderFlowCache?.art === art) return riderFlowCache;
+    if (dragonFlowCache.has(art)) return dragonFlowCache.get(art);
 
     const scale = 280 / sourceRect[2];
     const artWidth = 280;
@@ -11186,6 +11227,7 @@
     const cache = { art, padding, artWidth, artHeight, paint, lanes: [],
       palette: [L.accentRGB, L.primaryRGB, L.secondaryRGB].map(rgb => rgb.split(",").map(Number)) };
     riderFlowCache = cache;
+    if (activeSkinId === "dual_dragon") dragonFlowCache.set(art, cache);
     paint.drawImage(image, ...sourceRect, padding, padding, artWidth, artHeight);
 
     let pixels;
@@ -11282,7 +11324,7 @@
     paint.drawImage(mask, 0, 0);
     paint.globalCompositeOperation = "source-in";
     const bands = paint.createLinearGradient(w * .86, h * .06, w * .14, h * .94);
-    const [accent, primary, secondary] = palette;
+    const [accent, primary, secondary] = L.rim || palette;
     for (let i = 0; i <= 20; i++) {
       const pos = i / 20;
       const crest = Math.pow(.5 + .5 * Math.cos(TAU * (pos * 3.35 - clock)), 2);
@@ -11367,11 +11409,29 @@
     const energy = Math.min(1, .50 + speed * .18 + state.charge * .06 + surge * .40)
       * (reduceMotion ? .80 : 1);
     const clock = reduceMotion ? .18 : t * .74 + state.distance * .0004 + .3;
-    const lanes = flow.lanes.length ? flow.lanes : riderFlowRows.map(y => ({ y, left: .24, right: .75 }));
+    let lanes = flow.lanes.length ? flow.lanes : riderFlowRows.map(y => ({ y, left: .24, right: .75 }));
 
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    paintRiderRim(flow, x, y, width, height, clock, energy, front);
+    if (activeSkinId === "dual_dragon" && dragonMorph.mix > 0 && dragonMorph.mix < 1) {
+      const outlines = form => {
+        const art = getSkinRiderArt(activeSkin, form);
+        return getRiderFlow(art, getRiderArtImage(activeSkin, form), art.rect);
+      };
+      const night = outlines("dark"), day = outlines("light");
+      const mix = smoothstep(dragonMorph.mix);
+      paintRiderRim(night, x, y, width, height, clock, energy * (1 - mix), front);
+      paintRiderRim(day, x, y, width, height, clock, energy * mix, front);
+      if (night.lanes.length && night.lanes.length === day.lanes.length) {
+        lanes = night.lanes.map((a, i) => ({
+          y: lerp(a.y, day.lanes[i].y, mix),
+          left: lerp(a.left, day.lanes[i].left, mix),
+          right: lerp(a.right, day.lanes[i].right, mix)
+        }));
+      }
+    } else {
+      paintRiderRim(flow, x, y, width, height, clock, energy, front);
+    }
     for (const [index, lane] of lanes.entries()) {
       if (front) {
         // Leave the face clear. These streams peel off the crown, sleeve and front wheel.
@@ -11452,12 +11512,22 @@
     const legBlur = clamp((state.pedalSpeed - 5.2) / 7, 0, 1);
     const pedalBounce = Math.sin(pedalAngle * 2 + .4) * clamp(state.pedalSpeed * .105, .12, 1.25);
     const bob = Math.sin(state.distance * .023) * 1.6 + Math.sin(t * 2.4) * 1.15 + state.boost * Math.sin(t * 12) * .7 + pedalBounce;
-    const riderArt = getSkinRiderArt(activeSkin);
-    const image = riderArt && getRiderArtImage(activeSkin);
+    const isDragon = activeSkinId === "dual_dragon";
+    const visualForm = isDragon && dragonMorph.mix >= .5 ? "light" : "dark";
+    const riderArt = getSkinRiderArt(activeSkin, visualForm);
+    const image = riderArt && getRiderArtImage(activeSkin, visualForm);
     const sourceRect = image?.complete && image.naturalWidth
       ? (riderArt.rect || [0, 0, image.naturalWidth, image.naturalHeight]) : null;
     const destinationRect = [-425, -565 + (reduceMotion ? 0 : bob * .35), 850, 567];
-    const contacts = sourceRect && riderPedaling?.wheelContacts?.(riderArt.src, sourceRect, destinationRect);
+    let contacts = sourceRect && riderPedaling?.wheelContacts?.(riderArt.src, sourceRect, destinationRect);
+    const changing = isDragon && dragonMorph.mix > 0 && dragonMorph.mix < 1;
+    if (changing && contacts) {
+      const wheels = form => riderPedaling.wheelContacts(getSkinRiderArt(activeSkin, form).src, sourceRect, destinationRect);
+      const dark = wheels("dark"), light = wheels("light");
+      const mix = smoothstep(dragonMorph.mix);
+      const point = key => dark[key].map((v, i) => lerp(v, light[key][i], mix));
+      contacts = {rear: point("rear"), front: point("front")};
+    }
     const rearContact = contacts?.rear ?? [BIKE.rear.x, 0];
     const frontContact = contacts?.front ?? [BIKE.front.x, 0];
     const pedalAt = (angle) => ({
@@ -11541,10 +11611,22 @@
           tuck: state.crouchPose,
           reduceMotion
         };
-        if (!riderPedaling?.draw(ctx, riderArt.src, image, pedalAngle, sourceRect, destinationRect, wheelTravel, bodyMotion)) {
-          ctx.drawImage(image, ...sourceRect, ...destinationRect);
+        const paintRider = (surface, art, bitmap, rect, dest) => {
+          if (!riderPedaling?.draw(surface, art.src, bitmap, pedalAngle, rect, dest, wheelTravel, bodyMotion)) {
+            surface.drawImage(bitmap, ...rect, ...dest);
+          }
+        };
+        if (changing) {
+          dragonMorph.drawOrbit(ctx, false, reduceMotion);
+          dragonMorph.blend(ctx, destinationRect, (surface, form, dest) => {
+            const art = getSkinRiderArt(activeSkin, form);
+            paintRider(surface, art, getRiderArtImage(activeSkin, form), art.rect, dest);
+          }, reduceMotion);
+        } else {
+          paintRider(ctx, riderArt, image, sourceRect, destinationRect);
         }
         drawRiderFlow(flow, destinationRect, t, true);
+        if (changing) dragonMorph.drawOrbit(ctx, true, reduceMotion);
       }
       ctx.restore();
       return;
@@ -13669,6 +13751,11 @@
       if (state.slowMo > 0) state.slowMo = Math.max(0, state.slowMo - base);
       const dt = base * (state.slowMo > 0 ? .38 : 1);
       update(dt);
+      if (activeSkinId === "dual_dragon" && ["dark", "light"].every(form =>
+        getRiderArtImage(activeSkin, form).naturalWidth > 0)) {
+        dragonMorph.follow(dualDragonForm, state.gearTime > 0, dt, reduceMotion);
+        L = currentDragonTint();
+      }
       pausedCanvasDrawn = false;
       if (!world.inert) drawScene(state.time);
     } else if (!document.hidden && !world.inert && !pausedCanvasDrawn) {
@@ -13745,6 +13832,7 @@
   if (/[?&]debug=1\b/.test(window.location.search)) {
     window.__thunderPelican = {
       version: SCORE_ENGINE_VERSION,
+      dragonAppearance: () => ({skin: activeSkinId, base: dualDragonForm, mix: dragonMorph.mix, tint: L.primary, gear: state.gearTime, paused: state.paused}),
       ownerKey,
       leaderboard: Leaderboard,
       /* 当前这一局的状态，和「立刻结算这一局」——给无头测试跑真成绩用 */
