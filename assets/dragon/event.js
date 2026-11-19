@@ -5,6 +5,7 @@ function createDragonEvent(game) {
   const star = $("dragon-star"), equip = $("dragon-equip"), report = $("dragon-report");
   const terms = $("dragon-terms").textContent;
   const initialMessage = report.textContent;
+  const accountLabel = account.textContent;
   let rotation, wasPaused, attempt, message = initialMessage;
 
   function showForm(form) {
@@ -19,9 +20,11 @@ function createDragonEvent(game) {
     $("dragon-condition").textContent = owned ? "已收藏" : "获取条件";
     $("dragon-terms").textContent = owned ? "选择喜欢的形态，即可装备昼夜双龙进入霓虹港。" : terms;
     star.hidden = owned;
-    account.hidden = owned || !!attempt?.link;
+    account.hidden = owned;
+    account.textContent = attempt?.kind === "oauth" ? "取消本次授权" : accountLabel;
     authorize.hidden = owned || !attempt?.link;
-    if (!authorize.hidden) authorize.href = attempt.link;
+    if (authorize.hidden) authorize.removeAttribute("href");
+    else authorize.href = attempt.link;
     equip.hidden = !owned;
     report.textContent = owned && message === initialMessage ? "皮肤库可选常态。雷霆二档期间会变为另一形态，结束后恢复。" : message;
   }
@@ -54,8 +57,8 @@ function createDragonEvent(game) {
     if (dialog.open) equip.focus({preventScroll:true});
     else game.notify(text);
   }
-  function begin() {
-    const current={controller:new AbortController(), owner:game.owner()};
+  function begin(kind) {
+    const current={kind, controller:new AbortController(), owner:game.owner()};
     attempt=current;
     return current;
   }
@@ -106,7 +109,7 @@ function createDragonEvent(game) {
   }
   star.addEventListener("click", async () => {
     if (attempt || game.owns()) return;
-    const current=begin(), checkAt=performance.now()+60_000;
+    const current=begin("stars"), checkAt=performance.now()+60_000;
     say("正在读取仓库星数，点击后 1 分钟复查…");
     try {
       const before=await stars(current);
@@ -141,11 +144,15 @@ function createDragonEvent(game) {
   }
   account.addEventListener("click", async () => {
     if (game.owns()) return;
+    if (attempt?.kind === "oauth") {
+      failed(attempt,new Error("已取消 GitHub 授权，可重新验证。"));
+      return;
+    }
     if (attempt) { say("当前验证正在进行，可以继续骑行并稍后查看结果。"); return; }
     if (!/^https?:$/.test(location.protocol) || !window.BroadcastChannel) {
       say("请在支持账号验证的游戏网站打开此功能。当前可使用上方的一分钟点星领取。"); return;
     }
-    const current=begin();
+    const current=begin("oauth");
     say("正在连接 GitHub 账号验证服务…");
     try {
       const auth=await oauthRequest("start",{},current);
