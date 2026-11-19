@@ -3358,7 +3358,7 @@
       distanceKm: run.distanceKm,
       durationSec: run.durationSec,
       streakBest: run.streakBest,
-      endedBy: run.endedBy,
+      endedBy: reason,
       endedAt: run.endedAt,
       engine: run.engine,
       seed: ride.engine.seed,
@@ -4509,11 +4509,11 @@
   skinClose.addEventListener("click", closeSkinPanel);
   skinModal.querySelector("[data-skin-close]").addEventListener("click", closeSkinPanel);
   window.addEventListener("pagehide", () => {
-    bankRide("retire");
+    bankRide("retired");
     persistSkinProgress();
   });
   window.addEventListener("beforeunload", () => {
-    bankRide("retire");
+    bankRide("retired");
     persistSkinProgress();
   });
   document.addEventListener("visibilitychange", () => {
