@@ -1,5 +1,7 @@
 # Thunder Pelican · 雷霆鹈鹕
 
+**[立即试玩《雷霆鹈鹕》](https://imnotorangewong.github.io/Thunder-Pelican/)**
+
 > 一只眼睛冒闪电的鹈鹕，骑着单车穿过风暴海岸。
 
 `Canvas 2D` · `No dependencies` · `No build step` · `GitHub Pages ready`
