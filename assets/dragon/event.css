@@ -1,0 +1,64 @@
+#dragon-case {
+  color-scheme:dark; padding:7px; width:min(840px,94vw); max-width:94vw;
+  max-height:94dvh; overflow:auto; border:1px solid #f3d49a; color:#f5e8c9;
+  background:linear-gradient(135deg,#82623d,#f9dd98 2%,#4e3320 4%,#ae8b51 48%,#432e20 81%,#e4c083);
+  box-shadow:0 0 0 2px #302016,0 0 0 3px #8b704a,0 30px 100px #000c; margin:auto;
+  font-family:"Songti SC","STSong",Georgia,serif;
+}
+#dragon-case::backdrop{background:rgba(10,8,16,.81);backdrop-filter:blur(4px)}
+#dragon-case [hidden]{display:none!important}
+.case-rim{position:relative;display:grid;grid-template-columns:1.18fr 1fr;isolation:isolate;
+  padding:15px; background:repeating-linear-gradient(45deg,#2a211f 0 2px,#27201f 2px 4px);
+  border:1px solid #4b321f;box-shadow:inset 0 0 0 2px #c09a63,inset 0 0 0 5px #2c201a,inset 0 0 0 6px #715333}
+.case-engraving{position:absolute;inset:5px;z-index:4;pointer-events:none}
+.case-engraving i{position:absolute;width:35px;height:35px;border-top:3px double #efd6a0;border-left:3px double #efd6a0;filter:drop-shadow(1px 2px 0 #392617)}
+.case-engraving i:before{content:"❧";position:absolute;left:0;top:-6px;font:30px Georgia,serif;color:#e2b97d;transform:rotate(-42deg)}
+.case-engraving i:nth-child(2){right:0;transform:rotate(90deg)}.case-engraving i:nth-child(3){right:0;bottom:0;transform:rotate(180deg)}.case-engraving i:nth-child(4){left:0;bottom:0;transform:rotate(270deg)}
+.case-stage{min-height:410px;position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;
+ background:radial-gradient(ellipse at 54% 45%,#b8a09b 0%,#82737c 29%,#504657 49%,#24202d 77%,#17151c);
+ border:1px solid #92724e;box-shadow:inset 0 0 28px #161018}
+.case-stage:before{content:"";position:absolute;inset:9px;border:1px solid #e0c9a159;pointer-events:none}
+.case-orbit{position:absolute;width:78%;aspect-ratio:1;border:3px double #dbc39599;border-radius:50%;
+ background:repeating-conic-gradient(from 0deg,#e4c89899 0deg .5deg,transparent .6deg 5deg);
+ mask-image:radial-gradient(circle,transparent 66%,black 66.2%);transform:rotate(-8deg)}
+.case-stage img{position:absolute;top:46%;left:50%;width:96%;height:77%;object-fit:contain;
+ transform:translate(-50%,-50%);filter:drop-shadow(1px 9px 4px #17121f91);transition:opacity .8s ease}
+.case-stage[data-form="dark"] .case-light,.case-stage[data-form="light"] .case-dark{opacity:0}
+.case-forms{position:absolute;bottom:22px;display:flex;gap:2px;padding:3px;background:#17131bed;border:1px solid #9e8157}
+.case-forms button,.case-info button{cursor:pointer;font:inherit}
+.case-forms button{border:0;color:#d6c6ab;background:none;padding:6px 13px;font-size:13px}
+.case-forms button[aria-pressed="true"]{color:#251b1b;background:linear-gradient(#f4dfaf,#c9a679);box-shadow:inset 0 0 0 1px #fff2c9}
+.case-info{padding:38px 28px 25px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:radial-gradient(ellipse at 0 0,#443536,#272026 67%);border:1px solid #876747;border-left:0}
+.case-english{font:italic 22px/1.2 Georgia,serif;color:#d6b787}
+.case-info h2{font:700 clamp(36px,5vw,53px)/1.25 "Songti SC","STSong",serif;letter-spacing:.075em;margin:5px 0;color:#f6dfb2;text-shadow:0 1px #ffffdb,0 3px #53382a,0 4px #201821}
+.case-rule{display:flex;align-items:center;gap:8px;width:100%;color:#c19f65;font-size:14px;margin:5px 0 15px}
+.case-rule:after,.case-rule:before{content:"";flex:1;height:1px;background:linear-gradient(90deg,#795c40,#c3a373)}.case-rule:after{transform:scaleX(-1)}
+.case-info h3{font-size:17px;margin:0 0 5px;color:#ead2ab}
+.case-info p{font:14px/1.65 "PingFang SC",sans-serif;margin:0;color:#e7dbcb}
+#dragon-case #dragon-star,#dragon-case #dragon-equip{display:block;box-sizing:border-box;text-align:center;text-decoration:none;width:100%;margin:19px 0 8px;padding:11px 8px;border:3px double #60422b;outline:1px solid #e8cd9d;background:linear-gradient(#f4dfb2,#cfab78 52%,#bd925d);color:#291d19;font:bold 16px/1.3 "Songti SC",serif;text-shadow:0 1px #f7e2bb;cursor:pointer}
+#dragon-case #dragon-report{min-height:2.7em;font-size:12px;color:#cebea8}
+#dragon-dismiss,#dragon-locker{color:#e1c69b;background:transparent;border:0;text-decoration:underline;text-underline-offset:4px;padding:6px 0}
+#dragon-case button:focus-visible,#dragon-case a:focus-visible{outline:3px solid #fff4c6;outline-offset:3px}
+#dragon-locker{margin:0 22px 12px;cursor:pointer}
+@media(max-width:630px){#dragon-case{width:min(420px,94vw);padding:4px}.case-rim{grid-template-columns:1fr;padding:10px}.case-stage{min-height:0;height:clamp(160px,31dvh,265px)}.case-stage img{height:86%;top:44%;width:90%}.case-orbit{height:90%;width:auto}.case-forms{bottom:8px}.case-forms button{padding:3px 12px}.case-info{padding:14px 22px;border:1px solid #876747;border-top:0}.case-english{font-size:16px}.case-info h2{font-size:34px}.case-rule{margin:0 0 5px}.case-info h3{font-size:15px}.case-info p{font-size:13px}#dragon-case #dragon-star,#dragon-case #dragon-equip{margin-top:11px}#dragon-case #dragon-report{min-height:1.6em}}
+@media(prefers-reduced-motion:reduce){.case-stage img{transition:none}}
+
+
+#dragon-account,#dragon-authorize {
+  padding:5px 0; margin-bottom:5px; color:#f2d39b; background:none; border:0;
+  font:14px/1.5 "PingFang SC",sans-serif; text-underline-offset:4px; text-decoration:underline; cursor:pointer;
+}
+#dragon-dock { position:absolute; z-index:11; pointer-events:none;
+  inset:calc(var(--hud-top) + 60px) var(--hud-right) calc(var(--hud-bottom) + 70px) var(--hud-left); }
+#dragon-badge { position:absolute; right:0; top:43%; pointer-events:auto; touch-action:none; user-select:none;
+  width:54px; height:54px; padding:0; border-radius:50%; border:2px solid #e5c58e;
+  background:linear-gradient(110deg,#302736 50%,#c1b6b8 50%); cursor:grab;
+  box-shadow:0 2px 9px #000b,inset 0 0 0 2px #5a4540; }
+#dragon-badge:active { cursor:grabbing; }
+#dragon-badge:focus-visible { outline:3px solid #fff1a5; outline-offset:3px; }
+#dragon-badge .dragon-portrait { position:absolute; inset:3px; border-radius:50%;
+  background-size:240% auto; background-position:82% 11%; pointer-events:none; }
+.dragon-portrait.dark { background-image:url('../skins/dragon_form_dark.webp'); clip-path:polygon(0 0,67% 0,33% 100%,0 100%); }
+.dragon-portrait.light { background-image:url('../skins/dragon_form_light.webp'); clip-path:polygon(67% 0,100% 0,100% 100%,33% 100%); }
+#dragon-badge .dragon-star { position:absolute; right:-3px; bottom:-2px; color:#ffdf95; background:#35263b;
+  border:1px solid #dbb87a; border-radius:50%; font:14px/17px Georgia,serif; width:19px; height:19px; }

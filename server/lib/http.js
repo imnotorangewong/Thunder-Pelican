@@ -4,6 +4,8 @@
  * 不引第三方依赖，是为了让 `node app.js` 在任何装了 Node 18+ 的机器上直接跑。 */
 
 const fsp = require('node:fs/promises');
+const { createReadStream } = require('node:fs');
+const { pipeline } = require('node:stream/promises');
 const path = require('node:path');
 const zlib = require('node:zlib');
 
@@ -170,6 +172,33 @@ async function serveFile(req, res, filePath, options) {
   if (req.headers['if-none-match'] === etag) {
     res.writeHead(304, headers);
     res.end();
+    return true;
+  }
+
+  // Audio players, including Safari, probe and seek using a single byte range.
+  if (type === 'audio/mpeg') {
+    headers['Accept-Ranges'] = 'bytes';
+    let start = 0, end = stat.size - 1, status = 200;
+    const range = req.headers.range;
+    const match = range && /^bytes=(\d*)-(\d*)$/.exec(range);
+    if (match && (match[1] || match[2]) && !req.headers['if-range']) {
+      start = match[1] ? Number(match[1]) : Math.max(0, stat.size - Number(match[2]));
+      end = match[1] && match[2] ? Math.min(Number(match[2]), end) : end;
+      if (start > end) {
+        res.writeHead(416, {...headers, 'Content-Range': 'bytes */' + stat.size});
+        res.end();
+        return true;
+      }
+      status = 206;
+      headers['Content-Range'] = `bytes ${start}-${end}/${stat.size}`;
+    }
+    headers['Content-Length'] = end - start + 1;
+    res.writeHead(status, headers);
+    if (req.method === 'HEAD' || !stat.size) res.end();
+    else {
+      try { await pipeline(createReadStream(filePath, {start, end}), res); }
+      catch (err) { if (!req.destroyed) throw err; }
+    }
     return true;
   }
 

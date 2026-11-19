@@ -15,10 +15,13 @@ ENV NODE_ENV=production \
 # 服务端（零依赖，不需要 npm install）
 COPY server/ /app/
 
-# 站点：页面与音乐内嵌在 index.html，骑手插画按需从 assets/skins 加载。
+# 游戏首页、骑手插画、活动资源和背景音乐。
 # assets/screenshots 是 README 用的截图，不进镜像。
 COPY index.html /site/index.html
+COPY assets/creators/ /site/assets/creators/
 COPY assets/skins/ /site/assets/skins/
+COPY assets/dragon/ /site/assets/dragon/
+COPY assets/audio/ /site/assets/audio/
 
 RUN mkdir -p /data && chown -R node:node /app /data
 USER node

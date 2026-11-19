@@ -6,7 +6,7 @@
 
 ![Thunder Pelican — 突破与征程分](assets/screenshots/01-hero.png)
 
-[本次更新说明](更新说明.md) · [昼夜双龙点星预览](https://imnotorangewong.github.io/Thunder-Pelican/dragon-star-preview.html)
+[本次更新说明](更新说明.md)
 
 ## 项目简介
 
@@ -31,6 +31,8 @@
 - 点「计时挑战」开局，再点「结束挑战」可提前收下本局最速。满 30 秒自动结算。
 - 一局结束弹结算面板：最终得分、本局最快、历史最快、全球名次、A–E 综合评级。
 
+右上角的「主创说」展示两位主创的 GitHub 头像、署名、学校校徽和共同留言。点击头像可查看 GitHub 主页。
+
 骑行界面常驻显示速度、征程分和底部操作。点「当前契约」可以查看任务和进度。皮肤解锁从右上角提示，骑行继续进行。
 
 ## 运行
@@ -42,7 +44,7 @@ python3 -m http.server 8000
 # 打开 http://localhost:8000/
 ```
 
-不用 `npm install`，不用构建。运行时需要 `index.html` 和 `assets/skins/` 下的骑手插画。
+不用 `npm install`，不用构建。运行时请保留 `index.html` 及 `assets/skins/`、`assets/dragon/`、`assets/audio/` 和 `assets/creators/`。
 
 ## 操作
 
@@ -66,7 +68,7 @@ python3 -m http.server 8000
 
 | 通道 | 管什么 | 默认 |
 | --- | --- | --- |
-| 背景音乐 `Music` | 页面打开就循环播放的主题曲（135 秒，整段循环） | 开 · 100% |
+| 背景音乐 `Music` | 《雨爱（司凤版）》，约 2 分 20 秒，整段循环 | 开 · 100% |
 | 游戏音效 | 闪电、流光、二档提示，以及随速度和踏频变化的风声与链条声 | 开 · 100% |
 | 皮肤音效 `Skin voice` | 各皮肤的语音（比如雷霆猪的「我勒个雷」、黄金时刻的召唤音） | 开 · 100% |
 
@@ -373,7 +375,7 @@ Cloudflare Workers + D1），环境变量、接口契约、审计边界、容量
 | 04 | `MOON MELODY / 月弦歌姬` | 历史最高时速 **88 KM/H** | 月白紫流光 |
 | 05 | `AZURE TRAVELER / 青蓝行者` | 累计里程 **25 KM** | 天青流光 |
 | 06 | `CLINIC COMPANION / 蓝心守护` | 单局征程分 **25,000** | 医疗蓝流光 |
-| 07 | `DUAL DRAGON / 昼夜双龙` | 单局无伤 **120** 秒 | 暗、亮形态共用紫色流光，可在皮肤库切换 |
+| 07 | `DUAL DRAGON / 昼夜双龙` | 点星活动（1 分钟星数增长或验证本人账号） | 暗、亮形态共用紫色流光，可在皮肤库切换 |
 | 08 | `SUNFLOWER SCHOLAR / 向阳学者` | 历史最高时速 **100 KM/H** | 琥珀金流光 |
 | 09 | `STAR CAT / 星夜猫灵` | 累计摔车 **5** 次 | 星紫流光 |
 | 10 | `CLOUD LAMB / 云绵绵` | 本地时间 **22:00–05:00** 骑行满 30 秒 | 云蓝流光 |
@@ -577,7 +579,7 @@ thunder-pelican/
     └── deploy/                 # docker-compose + Caddyfile、nginx.conf、systemd、fly.toml
 ```
 
-游戏由 `index.html` 和 `assets/skins/` 运行；`server/` 只负责排行榜，不部署它游戏照样能玩（只是没有榜）。
+游戏首页的昼夜双龙活动会自动出现。返回骑行后，点击屏幕侧边的金星双龙徽章可重新打开；拖动可换边和调整高度。星数复查期间可以继续骑行。已点过星的玩家可通过 GitHub 授权验证本人账号。账号验证和排行榜使用 Node 服务，部署方式见 [服务端说明](DEPLOY-SERVER.md)。
 
 ## 兼容性与说明
 

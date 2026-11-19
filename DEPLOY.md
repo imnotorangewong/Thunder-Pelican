@@ -75,7 +75,7 @@ https://<your-username>.github.io/thunder-pelican/
 3. Branch 选择 `main`，目录选择 `/ (root)`。
 4. 保存并等待部署。
 
-这个项目没有构建步骤，根目录的 `index.html` 和 `assets/skins/` 可直接部署为静态站点。
+这个项目没有构建步骤，根目录的 `index.html`、`assets/skins/`、`assets/dragon/`、`assets/audio/` 和 `assets/creators/` 可直接部署为静态站点。
 
 ## 4. 更新
 

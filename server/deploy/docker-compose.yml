@@ -16,6 +16,9 @@ services:
       ALLOW_ORIGIN: "*"
       TRUST_PROXY: "1"
       HSTS: "1"
+      DRAGON_GITHUB_CLIENT_ID: ${DRAGON_GITHUB_CLIENT_ID:-}
+      DRAGON_GITHUB_CLIENT_SECRET: ${DRAGON_GITHUB_CLIENT_SECRET:-}
+      DRAGON_GITHUB_CALLBACK: ${DRAGON_GITHUB_CALLBACK:-}
     volumes:
       - board:/data
     restart: unless-stopped

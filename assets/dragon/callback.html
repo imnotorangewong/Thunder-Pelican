@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>昼夜双龙 · GitHub 授权</title></head>
+<body><main><h1>昼夜双龙</h1><p id="status" role="status">正在把授权结果送回游戏…</p></main>
+<script>
+const query = new URLSearchParams(location.search);
+history.replaceState(null,"",location.pathname);
+const state=query.get("state"), statusEl=document.getElementById("status");
+if (/^[a-f0-9]{48}$/.test(state) && window.BroadcastChannel) {
+  const channel=new BroadcastChannel("tp-dragon-"+state);
+  const send=()=>channel.postMessage({state,code:query.get("code")});
+  const timer=setInterval(send,1000);
+  const timeout=setTimeout(()=>finish("请返回原游戏标签页，重新发起验证。"),60000);
+  function finish(message) { clearInterval(timer); clearTimeout(timeout); channel.close(); statusEl.textContent=message; }
+  channel.onmessage=({data})=>{if(data?.received===true) finish("已送达。请返回原游戏标签页查看点星结果。");};
+  send();
+} else statusEl.textContent="授权无效，请在游戏中重新发起验证。";
+</script></body></html>

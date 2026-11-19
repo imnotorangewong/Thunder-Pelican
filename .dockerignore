@@ -11,5 +11,5 @@ server/tools
 server/testlib
 .preview
 preview
-# README 截图 14 MB，镜像里用不到（游戏素材全部内嵌 base64）
-assets
+# Only runtime assets enter the image.
+assets/screenshots

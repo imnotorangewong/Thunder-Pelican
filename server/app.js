@@ -15,6 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { URL } = require('node:url');
 
+const { dragonOAuth } = require('./lib/dragon-oauth');
 const E = require('./lib/engine');
 const { auditRun } = require('./lib/audit');
 const { BoardStore } = require('./lib/store');
@@ -50,6 +51,9 @@ function loadConfig(overrides) {
     auditStrict: env.AUDIT_STRICT !== '0',
     bodyLimit: Number(env.BODY_LIMIT || 1024 * 1024),
     cspConnect: [env.CSP_CONNECT || '', detectApiOrigin(staticDir)].filter(Boolean).join(' '),
+    dragonClientId: env.DRAGON_GITHUB_CLIENT_ID,
+    dragonClientSecret: env.DRAGON_GITHUB_CLIENT_SECRET,
+    dragonCallback: env.DRAGON_GITHUB_CALLBACK,
     hsts: env.HSTS === '1',
     submitPerHour: Number(env.SUBMIT_PER_HOUR || 30),
     quiet: env.QUIET === '1'
@@ -58,7 +62,7 @@ function loadConfig(overrides) {
 }
 
 function buildCsp(config) {
-  const connect = ["'self'", config.cspConnect].filter(Boolean).join(' ');
+  const connect = ["'self'", "https://api.github.com", config.cspConnect].filter(Boolean).join(' ');
   return [
     "default-src 'self'",
     "img-src 'self' data: blob:",
@@ -81,6 +85,7 @@ function createApp(options) {
   const writeLimiter = new RateLimiter({ capacity: Math.max(3, Math.min(10, config.submitPerHour / 3)), refillPerSec: config.submitPerHour / 3600 });
   const readLimiter = new RateLimiter({ capacity: 60, refillPerSec: 2 });
 
+  const dragonAuth = dragonOAuth(config, config.githubFetch);
   const ready = store.load();
 
   function cors(res, req) {
@@ -91,7 +96,7 @@ function createApp(options) {
   function log(req, res, status) {
     if (config.quiet) return;
     const ip = clientIp(req, config.trustProxy);
-    console.log(`${new Date().toISOString()} ${status} ${req.method} ${req.url} ${ip}`);
+    console.log(`${new Date().toISOString()} ${status} ${req.method} ${req.url.startsWith('/assets/dragon/callback.html') ? '/assets/dragon/callback.html' : req.url} ${ip}`);
   }
 
   async function handleApi(req, res, url) {
@@ -104,6 +109,11 @@ function createApp(options) {
       res.writeHead(204);
       res.end();
       return;
+    }
+
+    if (pathname.startsWith('/api/dragon/')) {
+      if (!writeLimiter.take(ip)) return sendJson(res,429,{ok:false,reason:'rate_limited'});
+      return dragonAuth(req,res,pathname.slice('/api/dragon/'.length));
     }
 
     if (pathname === '/api/health' && reading) {

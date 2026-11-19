@@ -116,10 +116,7 @@ RSS ≈ 41 MB（Node 运行时）
 > 换 6M 也只是「能忍」。游戏入口 `index.html` 约 2.08 MB，13 款骑手插画则按需单独下载，带宽比 CPU 重要得多。
 > 并发是平分的：4M 的机器上 N 个人同时点开，每个人大约等 `N × 2.7` 秒。
 
-**带宽紧的话，有一招比升配更管用**：首屏 1.29 MiB 里，**1.04 MiB 是背景音乐**（base64 内嵌，
-AAC 压不动）。把音乐拆成外部文件、改成按需加载，首屏只剩 **0.27 MiB**——4M 的机器也能 0.55 秒开屏，
-音乐在第一次点击后后台下载，不挡游戏。代价是从「一个文件」变成「index.html + 一个音频文件」，
-双击一起放在同一目录照样能跑。
+以上带宽估算来自旧版。新版背景音乐从 `assets/audio/track.mp3` 单独下载，可使用 HTTP 字节范围请求播放。
 
 三个现实选择：
 
@@ -294,7 +291,7 @@ CSP_CONNECT=https://api.example.com          # 让页面允许连这个域
 > `CSP_CONNECT` 其实可以省：服务端启动时会读 `index.html` 里的 meta，绝对地址的 origin
 > 会自动加进 `connect-src`。显式写上只是更保险。
 
-Pages 的工作流会发布 `index.html` 和 `assets/skins/`，所以 meta 改完推一次就生效。前后端分属两个域时，
+Pages 的工作流会发布游戏页面、骑手插画、点星活动资源和背景音乐，所以 meta 改完推一次就生效。前后端分属两个域时，
 记得把 `ALLOW_ORIGIN` 收紧到自己的页面域名，别留 `*`。
 
 ---
@@ -495,6 +492,12 @@ node server/tools/smoke.js https://你的域名
 - 手机 4G 下首屏多久能玩（1.35 MB gzip，通常 2–4 秒）。
 - `board.json` 有没有定时备份（cron + 保留 7 天就够）。
 
-回滚：把 `index.html`、`assets/skins/` 和 `server/` 换回上一个 tag，重启进程；榜单文件向下兼容（多字段忽略、少字段走默认）。
+回滚：把 `index.html`、`assets/` 和 `server/` 换回上一个 tag，重启进程；榜单文件向下兼容（多字段忽略、少字段走默认）。
 
 ---
+
+## 昼夜双龙的 GitHub 账号验证
+
+一分钟星数复查可在静态站点使用。若也要启用本人账号验证，在 GitHub 注册用于此游戏的应用，使用用户授权流程；使用 GitHub App 时选择只读的 Starring 用户权限及 Metadata。授权回调地址填游戏站点（与游戏页面同源）下的 `assets/dragon/callback.html`。例如 GitHub Pages 项目页的回调为 `https://imnotorangewong.github.io/Thunder-Pelican/assets/dragon/callback.html`。
+
+在 Node 服务部署环境设置 `DRAGON_GITHUB_CLIENT_ID`、`DRAGON_GITHUB_CLIENT_SECRET` 和完整的 `DRAGON_GITHUB_CALLBACK`，然后重启。后台只查询当前账号是否给项目点星。客户端密钥与用户访问令牌都留在服务端；请勿写入 HTML 或仓库。游戏与服务分开部署时，把页面的 `tp-leaderboard-api` 指向该服务的 HTTPS API，并配置页面来源的 CORS。一次账号授权的发起和完成应路由到同一服务实例，临时验证状态在 10 分钟后过期。
